@@ -106,7 +106,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_profile_id: { Args: never; Returns: string }
     }
     Enums: {
       expense_category:
