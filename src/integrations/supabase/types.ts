@@ -22,6 +22,7 @@ export type Database = {
           custom_split_amount: number | null
           description: string
           expense_date: string
+          group_id: string | null
           id: string
           is_payment: boolean
           notes: string | null
@@ -37,6 +38,7 @@ export type Database = {
           custom_split_amount?: number | null
           description: string
           expense_date?: string
+          group_id?: string | null
           id?: string
           is_payment?: boolean
           notes?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           custom_split_amount?: number | null
           description?: string
           expense_date?: string
+          group_id?: string | null
           id?: string
           is_payment?: boolean
           notes?: string | null
@@ -62,6 +65,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "expenses_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "expenses_owes_user_id_fkey"
             columns: ["owes_user_id"]
             isOneToOne: false
@@ -71,6 +81,74 @@ export type Database = {
           {
             foreignKeyName: "expenses_paid_by_fkey"
             columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          profile_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          profile_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -106,7 +184,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_invite_code: { Args: never; Returns: string }
       get_current_profile_id: { Args: never; Returns: string }
+      is_group_member: { Args: { _group_id: string }; Returns: boolean }
     }
     Enums: {
       expense_category:

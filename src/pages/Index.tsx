@@ -1,9 +1,15 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useGroups } from "@/hooks/useGroups";
+import { useProfiles } from "@/hooks/useProfiles";
 import { Navigate } from "react-router-dom";
 import Dashboard from "./Dashboard";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { loading: profilesLoading } = useProfiles();
+  const { groups, loading: groupsLoading } = useGroups();
+
+  const loading = authLoading || profilesLoading || groupsLoading;
 
   if (loading) {
     return (
@@ -15,6 +21,11 @@ const Index = () => {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // If user has no groups, redirect to group selection
+  if (groups.length === 0) {
+    return <Navigate to="/group-select" replace />;
   }
 
   return <Dashboard />;

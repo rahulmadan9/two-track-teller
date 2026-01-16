@@ -1,9 +1,10 @@
 import { useExpenses } from "@/hooks/useExpenses";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useGroupMembers } from "@/hooks/useGroupMembers";
 
 const BalanceSummary = () => {
   const { calculateBalance } = useExpenses();
-  const { roommate } = useProfiles();
+  const { otherMembers } = useGroupMembers();
+  const roommate = otherMembers[0]?.profile;
   const { amount, oweDirection } = calculateBalance();
 
   const formatAmount = (num: number) => {
