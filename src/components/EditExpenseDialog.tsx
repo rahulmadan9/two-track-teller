@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Expense } from "@/hooks/useExpenses";
 import { Database } from "@/integrations/supabase/types";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 type ExpenseCategory = Database["public"]["Enums"]["expense_category"];
 type SplitType = Database["public"]["Enums"]["split_type"];
@@ -92,8 +93,8 @@ const EditExpenseDialog = ({
       toast.success("Expense updated");
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update expense");
+    } catch (error: unknown) {
+      toast.error(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }
