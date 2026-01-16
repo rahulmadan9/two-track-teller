@@ -102,25 +102,25 @@ export const useGroups = () => {
       return { group: null, error: "Profile not found" };
     }
 
-    const { data: groupData, error: groupError } = await supabase
-      .from("groups")
-      .insert({ name, created_by: currentProfile.id })
-      .select()
-      .single();
+    // Use atomic function to create group and add creator as member
+    const { data: groupId, error: rpcError } = await supabase
+      .rpc("create_group_with_member", { _name: name });
 
-    if (groupError) {
-      console.error("Error creating group:", groupError);
-      return { group: null, error: groupError.message };
+    if (rpcError) {
+      console.error("Error creating group:", rpcError);
+      return { group: null, error: rpcError.message };
     }
 
-    // Add creator as a member
-    const { error: memberError } = await supabase
-      .from("group_members")
-      .insert({ group_id: groupData.id, profile_id: currentProfile.id });
+    // Fetch the created group
+    const { data: groupData, error: fetchError } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("id", groupId)
+      .single();
 
-    if (memberError) {
-      console.error("Error adding member:", memberError);
-      return { group: null, error: memberError.message };
+    if (fetchError || !groupData) {
+      console.error("Error fetching group:", fetchError);
+      return { group: null, error: fetchError?.message || "Failed to fetch group" };
     }
 
     setActiveGroup(groupData);
