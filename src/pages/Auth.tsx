@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -43,8 +44,8 @@ const Auth = () => {
         toast.success("Account created! You're now logged in.");
         navigate("/");
       }
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }

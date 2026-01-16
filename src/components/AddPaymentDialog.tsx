@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Banknote } from "lucide-react";
 import { toast } from "sonner";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 const AddPaymentDialog = () => {
   const { currentProfile, roommate } = useProfiles();
@@ -44,8 +45,8 @@ const AddPaymentDialog = () => {
       toast.success("Payment recorded!");
       setAmount("");
       setOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to record payment");
+    } catch (error: unknown) {
+      toast.error(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }

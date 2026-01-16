@@ -27,6 +27,7 @@ import {
 import { Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 type ExpenseCategory = Database["public"]["Enums"]["expense_category"];
 type SplitType = Database["public"]["Enums"]["split_type"];
@@ -113,8 +114,8 @@ const AddExpenseDialog = () => {
       toast.success("Expense added!");
       resetForm();
       setOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add expense");
+    } catch (error: unknown) {
+      toast.error(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }
