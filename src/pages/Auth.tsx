@@ -104,6 +104,7 @@ const Auth = () => {
               {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
+          {/* Signup functionality disabled - login only for existing accounts
           <div className="mt-4 text-center text-sm text-muted-foreground">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
             <button
@@ -113,6 +114,7 @@ const Auth = () => {
               {isLogin ? "Sign up" : "Sign in"}
             </button>
           </div>
+          */}
         </CardContent>
       </Card>
     </div>
