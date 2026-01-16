@@ -2,19 +2,26 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGroups } from "@/hooks/useGroups";
 import { useProfiles } from "@/hooks/useProfiles";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Copy, Check } from "lucide-react";
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Users, UserPlus, Copy, Check, User, LogOut } from "lucide-react";
 const GroupSelect = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { createGroup, joinGroup, refetch, loading: groupsLoading } = useGroups();
-  const { loading: profilesLoading } = useProfiles();
-
+  const { createGroup, joinGroup, refetch, loading: groupsLoading, groups } = useGroups();
+  const { loading: profilesLoading, currentProfile } = useProfiles();
+  const { signOut } = useAuth();
   const [groupName, setGroupName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
@@ -95,8 +102,43 @@ const GroupSelect = () => {
     );
   }
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
+      {/* User Menu */}
+      <div className="absolute top-4 right-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon">
+              <User className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <div className="px-2 py-1.5 text-sm font-medium">
+              {currentProfile?.display_name || "User"}
+            </div>
+            <DropdownMenuSeparator />
+            {groups.length > 0 && (
+              <>
+                <DropdownMenuItem onClick={() => navigate("/")}>
+                  <Users className="mr-2 h-4 w-4" />
+                  My Groups
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome to SplitEasy</CardTitle>
