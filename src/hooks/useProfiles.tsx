@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { logger } from "@/lib/logger";
 
 export interface Profile {
   id: string;
@@ -32,7 +33,7 @@ export const useProfiles = () => {
         .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Error fetching profiles:", error);
+        logger.error("Error fetching profiles", error);
         setLoading(false);
         return;
       }
