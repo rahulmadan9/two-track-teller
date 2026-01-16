@@ -1,4 +1,4 @@
-import { Home, Receipt, Plus } from "lucide-react";
+import { IndianRupee, Receipt, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface BottomNavProps {
@@ -8,7 +8,7 @@ interface BottomNavProps {
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   const tabs = [
-    { id: "balance" as const, label: "Balance", icon: Home },
+    { id: "balance" as const, label: "Balance", icon: IndianRupee },
     { id: "add" as const, label: "Add", icon: Plus, isMain: true },
     { id: "expenses" as const, label: "Expenses", icon: Receipt },
   ];
