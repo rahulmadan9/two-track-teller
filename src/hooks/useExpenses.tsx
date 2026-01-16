@@ -75,12 +75,12 @@ export const useExpenses = () => {
     // Use appropriate validator based on whether this is a payment
     if (expense.is_payment) {
       const result = validatePayment(dataToValidate);
-      if (!result.success) {
+      if (result.success === false) {
         throw new Error(result.error);
       }
     } else {
       const result = validateExpense(dataToValidate);
-      if (!result.success) {
+      if (result.success === false) {
         throw new Error(result.error);
       }
     }
