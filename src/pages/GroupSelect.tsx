@@ -12,7 +12,7 @@ import { Users, UserPlus, Copy, Check } from "lucide-react";
 const GroupSelect = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { createGroup, joinGroup, loading: groupsLoading } = useGroups();
+  const { createGroup, joinGroup, refetch, loading: groupsLoading } = useGroups();
   const { loading: profilesLoading } = useProfiles();
 
   const [groupName, setGroupName] = useState("");
@@ -41,6 +41,8 @@ const GroupSelect = () => {
     }
 
     if (group) {
+      // Refetch groups to update the state before showing the invite code
+      await refetch();
       setCreatedCode(group.invite_code);
       toast({
         title: "Group created!",
