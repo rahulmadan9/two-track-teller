@@ -187,6 +187,16 @@ export type Database = {
       create_group_with_member: { Args: { _name: string }; Returns: string }
       generate_invite_code: { Args: never; Returns: string }
       get_current_profile_id: { Args: never; Returns: string }
+      get_group_by_invite_code: {
+        Args: { _invite_code: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          name: string
+        }[]
+      }
       is_group_member: { Args: { _group_id: string }; Returns: boolean }
     }
     Enums: {
