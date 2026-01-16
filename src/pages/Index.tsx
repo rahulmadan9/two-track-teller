@@ -1,17 +1,14 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useGroups } from "@/hooks/useGroups";
-import { useProfiles } from "@/hooks/useProfiles";
 import { Navigate } from "react-router-dom";
 import Dashboard from "./Dashboard";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
-  const { loading: profilesLoading } = useProfiles();
   const { groups, loading: groupsLoading } = useGroups();
 
-  const loading = authLoading || profilesLoading || groupsLoading;
-
-  if (loading) {
+  // Wait for both auth and groups to fully load
+  if (authLoading || groupsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-muted-foreground">Loading...</p>
