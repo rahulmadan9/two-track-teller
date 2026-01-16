@@ -184,6 +184,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_group_with_member: { Args: { _name: string }; Returns: string }
       generate_invite_code: { Args: never; Returns: string }
       get_current_profile_id: { Args: never; Returns: string }
       is_group_member: { Args: { _group_id: string }; Returns: boolean }
