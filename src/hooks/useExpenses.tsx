@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfiles, Profile } from "./useProfiles";
 import { Database } from "@/integrations/supabase/types";
+import { validateExpense, validatePayment } from "@/lib/validation";
 
 type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
 type ExpenseInsert = Database["public"]["Tables"]["expenses"]["Insert"];
@@ -61,6 +62,29 @@ export const useExpenses = () => {
   }, [profiles, fetchExpenses]);
 
   const addExpense = async (expense: ExpenseInsert) => {
+    // Validate expense data before sending to database
+    // This provides user-friendly errors instead of raw database constraint errors
+    const dataToValidate = {
+      ...expense,
+      amount: Number(expense.amount),
+      custom_split_amount: expense.custom_split_amount !== null && expense.custom_split_amount !== undefined 
+        ? Number(expense.custom_split_amount) 
+        : null,
+    };
+
+    // Use appropriate validator based on whether this is a payment
+    if (expense.is_payment) {
+      const result = validatePayment(dataToValidate);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+    } else {
+      const result = validateExpense(dataToValidate);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+    }
+
     const { error } = await supabase.from("expenses").insert(expense);
     if (error) throw error;
   };
