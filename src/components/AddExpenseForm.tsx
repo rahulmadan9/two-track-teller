@@ -124,9 +124,11 @@ const AddExpenseForm = ({ onSuccess }: AddExpenseFormProps) => {
       const finalCategory =
         category === "auto" ? smartCategorize(description) : category;
       const paidById = paidBy === "me" ? currentProfile.id : roommate?.id;
+      // The person who owes is the one who didn't pay
+      const owesUserId = paidBy === "me" ? roommate?.id : currentProfile.id;
 
-      if (!paidById) {
-        toast.error("Could not determine payer");
+      if (!paidById || !owesUserId) {
+        toast.error("Could not determine payer or ower");
         return;
       }
 
@@ -134,6 +136,7 @@ const AddExpenseForm = ({ onSuccess }: AddExpenseFormProps) => {
         description,
         amount: parseFloat(amount),
         paid_by: paidById,
+        owes_user_id: owesUserId,
         split_type: splitType,
         custom_split_amount:
           splitType === "custom" ? parseFloat(customAmount) : null,
