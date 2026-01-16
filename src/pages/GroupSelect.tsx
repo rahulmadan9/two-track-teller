@@ -75,6 +75,9 @@ const GroupSelect = () => {
       return;
     }
 
+    // Refetch groups to update the state before navigating
+    await refetch();
+
     toast({
       title: "Joined group!",
       description: "You've successfully joined the group.",

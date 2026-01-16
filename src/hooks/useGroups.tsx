@@ -132,14 +132,17 @@ export const useGroups = () => {
       return { group: null, error: "Profile not found" };
     }
 
-    // Find group by invite code
-    const { data: groupData, error: groupError } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("invite_code", inviteCode.toUpperCase())
-      .single();
+    // Find group by invite code using RPC (bypasses RLS for lookup)
+    const { data: groupRows, error: groupError } = await supabase
+      .rpc("get_group_by_invite_code", { _invite_code: inviteCode });
 
-    if (groupError || !groupData) {
+    if (groupError) {
+      console.error("Error looking up group:", groupError);
+      return { group: null, error: "Invalid invite code" };
+    }
+
+    const groupData = groupRows?.[0];
+    if (!groupData) {
       return { group: null, error: "Invalid invite code" };
     }
 
