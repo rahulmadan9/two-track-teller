@@ -82,7 +82,7 @@ const GroupSelect = () => {
   };
 
   const goToDashboard = () => {
-    navigate("/", { replace: true });
+    navigate("/");
   };
 
   if (loading) {

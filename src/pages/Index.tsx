@@ -7,7 +7,7 @@ import Dashboard from "./Dashboard";
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
   const { loading: profilesLoading } = useProfiles();
-  const { groups, activeGroup, loading: groupsLoading } = useGroups();
+  const { groups, loading: groupsLoading } = useGroups();
 
   const loading = authLoading || profilesLoading || groupsLoading;
 
@@ -23,8 +23,8 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // If user has no groups and no active group, redirect to group selection
-  if (groups.length === 0 && !activeGroup) {
+  // If user has no groups, redirect to group selection
+  if (groups.length === 0) {
     return <Navigate to="/group-select" replace />;
   }
 
