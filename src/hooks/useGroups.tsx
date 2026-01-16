@@ -14,17 +14,20 @@ export interface Group {
 const ACTIVE_GROUP_KEY = "splitease_active_group";
 
 export const useGroups = () => {
-  const { user } = useAuth();
-  const { currentProfile } = useProfiles();
+  const { user, loading: authLoading } = useAuth();
+  const { currentProfile, loading: profilesLoading } = useProfiles();
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroup, setActiveGroupState] = useState<Group | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [groupsFetched, setGroupsFetched] = useState(false);
+
+  // Loading is true until we've actually fetched groups or determined there's no user/profile
+  const loading = authLoading || profilesLoading || (!groupsFetched && !!currentProfile);
 
   const fetchGroups = useCallback(async () => {
     if (!currentProfile) {
       setGroups([]);
       setActiveGroupState(null);
-      setLoading(false);
+      setGroupsFetched(true);
       return;
     }
 
@@ -35,7 +38,7 @@ export const useGroups = () => {
 
     if (error) {
       console.error("Error fetching groups:", error);
-      setLoading(false);
+      setGroupsFetched(true);
       return;
     }
 
@@ -54,16 +57,19 @@ export const useGroups = () => {
       setActiveGroupState(null);
     }
 
-    setLoading(false);
+    setGroupsFetched(true);
   }, [currentProfile]);
 
   useEffect(() => {
     if (!user || !currentProfile) {
       setGroups([]);
       setActiveGroupState(null);
-      setLoading(false);
+      setGroupsFetched(true);
       return;
     }
+    
+    // Reset fetched state when profile changes to trigger a new fetch
+    setGroupsFetched(false);
 
     fetchGroups();
 
