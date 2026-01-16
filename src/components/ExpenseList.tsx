@@ -1,5 +1,5 @@
 import { useExpenses } from "@/hooks/useExpenses";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,7 +15,8 @@ const categoryLabels: Record<string, string> = {
 
 const ExpenseList = () => {
   const { expenses, loading } = useExpenses();
-  const { currentProfile } = useProfiles();
+  const { currentMember } = useGroupMembers();
+  const currentProfile = currentMember?.profile;
 
   const formatAmount = (num: number) => {
     return new Intl.NumberFormat("en-IN", {

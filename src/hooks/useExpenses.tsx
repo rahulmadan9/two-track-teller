@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfiles, Profile } from "./useProfiles";
+import { useGroups } from "./useGroups";
+import { useGroupMembers } from "./useGroupMembers";
+import { Profile } from "./useProfiles";
 import { Database } from "@/integrations/supabase/types";
 
 type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
@@ -11,14 +13,22 @@ export interface Expense extends ExpenseRow {
 }
 
 export const useExpenses = () => {
-  const { profiles, currentProfile, roommate } = useProfiles();
+  const { activeGroup } = useGroups();
+  const { members, currentMember, otherMembers } = useGroupMembers();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchExpenses = useCallback(async () => {
+    if (!activeGroup) {
+      setExpenses([]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("expenses")
       .select("*")
+      .eq("group_id", activeGroup.id)
       .order("expense_date", { ascending: false })
       .order("created_at", { ascending: false });
 
@@ -31,24 +41,33 @@ export const useExpenses = () => {
     // Map payer profiles to expenses
     const expensesWithPayer = (data || []).map((expense) => ({
       ...expense,
-      payer: profiles.find((p) => p.id === expense.paid_by),
+      payer: members.find((m) => m.profile?.id === expense.paid_by)?.profile,
     }));
 
     setExpenses(expensesWithPayer);
     setLoading(false);
-  }, [profiles]);
+  }, [activeGroup, members]);
 
   useEffect(() => {
-    if (profiles.length === 0) return;
+    if (!activeGroup) {
+      setExpenses([]);
+      setLoading(false);
+      return;
+    }
     
     fetchExpenses();
 
     // Subscribe to realtime updates
     const channel = supabase
-      .channel("expenses-changes")
+      .channel(`expenses-${activeGroup.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "expenses" },
+        { 
+          event: "*", 
+          schema: "public", 
+          table: "expenses",
+          filter: `group_id=eq.${activeGroup.id}`,
+        },
         () => {
           fetchExpenses();
         }
@@ -58,14 +77,24 @@ export const useExpenses = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profiles, fetchExpenses]);
+  }, [activeGroup, fetchExpenses]);
 
-  const addExpense = async (expense: ExpenseInsert) => {
-    const { error } = await supabase.from("expenses").insert(expense);
+  const addExpense = async (expense: Omit<ExpenseInsert, "group_id">) => {
+    if (!activeGroup) throw new Error("No active group");
+    
+    const { error } = await supabase.from("expenses").insert({
+      ...expense,
+      group_id: activeGroup.id,
+    });
     if (error) throw error;
   };
 
   const calculateBalance = (): { amount: number; oweDirection: "you_owe" | "they_owe" | "settled" } => {
+    // For now, calculate balance between current user and the first other member
+    // This maintains compatibility with the 2-person model per group
+    const currentProfile = currentMember?.profile;
+    const roommate = otherMembers[0]?.profile;
+
     if (!currentProfile || !roommate) {
       return { amount: 0, oweDirection: "settled" };
     }

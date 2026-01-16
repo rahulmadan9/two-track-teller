@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useExpenses } from "@/hooks/useExpenses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,8 +56,10 @@ const autoCategorize = (description: string): ExpenseCategory => {
 };
 
 const AddExpenseDialog = () => {
-  const { currentProfile, roommate } = useProfiles();
+  const { currentMember, otherMembers } = useGroupMembers();
   const { addExpense } = useExpenses();
+  const currentProfile = currentMember?.profile;
+  const roommate = otherMembers[0]?.profile;
   const [open, setOpen] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
   const [loading, setLoading] = useState(false);
