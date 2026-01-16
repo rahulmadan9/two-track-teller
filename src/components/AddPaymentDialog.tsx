@@ -65,10 +65,10 @@ const AddPaymentDialog = () => {
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
-            {oweDirection === "you_owe"
-              ? `You owe ${roommateName} $${balanceAmount.toFixed(2)}`
+          {oweDirection === "you_owe"
+              ? `You owe ${roommateName} ₹${balanceAmount.toFixed(2)}`
               : oweDirection === "they_owe"
-              ? `${roommateName} owes you $${balanceAmount.toFixed(2)}`
+              ? `${roommateName} owes you ₹${balanceAmount.toFixed(2)}`
               : "You're all settled up!"}
           </DialogDescription>
         </DialogHeader>
