@@ -95,7 +95,11 @@ const SwipeableExpenseItem = ({
           </div>
           <p
             className={`font-semibold tabular-nums text-lg ${
-              expense.is_payment ? "text-positive" : "text-foreground"
+              expense.is_payment
+                ? "text-positive"
+                : isPaidByMe
+                ? "text-positive"
+                : "text-destructive"
             }`}
           >
             {formatAmount(Number(expense.amount))}
