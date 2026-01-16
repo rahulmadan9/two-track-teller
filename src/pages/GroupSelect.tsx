@@ -124,7 +124,7 @@ const GroupSelect = () => {
             <DropdownMenuSeparator />
             {groups.length > 0 && (
               <>
-                <DropdownMenuItem onClick={() => navigate("/")}>
+                <DropdownMenuItem onClick={() => navigate("/my-groups")}>
                   <Users className="mr-2 h-4 w-4" />
                   My Groups
                 </DropdownMenuItem>
