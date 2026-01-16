@@ -1,20 +1,16 @@
+import { motion, AnimatePresence } from "framer-motion";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useGroupMembers } from "@/hooks/useGroupMembers";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import SwipeableExpenseItem from "./SwipeableExpenseItem";
+import { toast } from "sonner";
 
-const categoryLabels: Record<string, string> = {
-  rent: "Rent",
-  utilities: "Utilities",
-  groceries: "Groceries",
-  household_supplies: "Household",
-  shared_meals: "Meals",
-  purchases: "Purchases",
-  other: "Other",
-};
+interface ExpenseListProps {
+  showAll?: boolean;
+}
 
-const ExpenseList = () => {
-  const { expenses, loading } = useExpenses();
+const ExpenseList = ({ showAll = false }: ExpenseListProps) => {
+  const { expenses, loading, refetch } = useExpenses();
   const { currentMember } = useGroupMembers();
   const currentProfile = currentMember?.profile;
 
@@ -22,77 +18,102 @@ const ExpenseList = () => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(num);
   };
 
-  // Filter to current month by default
-  const currentMonthExpenses = expenses.filter((expense) => {
-    const expenseDate = new Date(expense.expense_date);
-    const now = new Date();
-    return (
-      expenseDate.getMonth() === now.getMonth() &&
-      expenseDate.getFullYear() === now.getFullYear()
-    );
-  });
+  // Filter to current month or show all
+  const displayedExpenses = showAll
+    ? expenses
+    : expenses.filter((expense) => {
+        const expenseDate = new Date(expense.expense_date);
+        const now = new Date();
+        return (
+          expenseDate.getMonth() === now.getMonth() &&
+          expenseDate.getFullYear() === now.getFullYear()
+        );
+      });
+
+  const handleDelete = async (expenseId: string) => {
+    try {
+      const { error } = await supabase
+        .from("expenses")
+        .delete()
+        .eq("id", expenseId);
+
+      if (error) throw error;
+      
+      toast.success("Expense deleted");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete expense");
+    }
+  };
 
   if (loading) {
     return (
-      <div className="rounded-xl bg-card border border-border/50 p-6 shadow-sm">
-        <p className="text-muted-foreground text-center py-8">Loading expenses...</p>
+      <div className="rounded-2xl bg-card border border-border/50 p-8">
+        <div className="flex items-center justify-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full"
+          />
+        </div>
       </div>
     );
   }
 
-  if (currentMonthExpenses.length === 0) {
+  if (displayedExpenses.length === 0) {
     return (
-      <div className="rounded-xl bg-card border border-border/50 p-6 shadow-sm">
-        <p className="text-sm font-medium text-muted-foreground mb-4">This Month</p>
-        <p className="text-muted-foreground text-center py-8">No expenses this month yet.</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl bg-card border border-border/50 p-8 text-center"
+      >
+        <p className="text-muted-foreground">
+          {showAll ? "No expenses yet." : "No expenses this month yet."}
+        </p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Tap the + button to add one!
+        </p>
+      </motion.div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-card border border-border/50 shadow-sm overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="rounded-2xl bg-card border border-border/50 overflow-hidden"
+    >
       <div className="p-4 border-b border-border/50">
-        <p className="text-sm font-medium text-muted-foreground">This Month</p>
+        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          {showAll ? "All Expenses" : "This Month"}
+        </p>
       </div>
       <div className="divide-y divide-border/50">
-        {currentMonthExpenses.map((expense) => {
-          const isPaidByMe = expense.paid_by === currentProfile?.id;
-          const payerName = expense.payer?.display_name || "Unknown";
-
-          return (
-            <div
+        <AnimatePresence mode="popLayout">
+          {displayedExpenses.map((expense, index) => (
+            <motion.div
               key={expense.id}
-              className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors animate-fade-in"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 100, height: 0 }}
+              transition={{ delay: index * 0.03, duration: 0.2 }}
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-foreground truncate">
-                    {expense.is_payment ? "💸 Payment" : expense.description}
-                  </p>
-                  {!expense.is_payment && (
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      {categoryLabels[expense.category] || expense.category}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {format(new Date(expense.expense_date), "MMM d")} •{" "}
-                  {isPaidByMe ? "You paid" : `${payerName} paid`}
-                  {expense.split_type === "fifty_fifty" && " • 50/50"}
-                  {expense.split_type === "one_owes_all" && " • Full"}
-                </p>
-              </div>
-              <p className={`font-semibold tabular-nums ${expense.is_payment ? "text-positive" : "text-foreground"}`}>
-                {formatAmount(Number(expense.amount))}
-              </p>
-            </div>
-          );
-        })}
+              <SwipeableExpenseItem
+                expense={expense}
+                currentProfileId={currentProfile?.id}
+                onDelete={handleDelete}
+                formatAmount={formatAmount}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
