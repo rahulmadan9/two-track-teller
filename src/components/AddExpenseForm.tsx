@@ -183,7 +183,7 @@ const AddExpenseForm = ({ onSuccess }: AddExpenseFormProps) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      {/* Repeat Last Expense Button */}
+      {/* Repeat Last Expense Button - Commented out for now
       {lastExpense && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -202,6 +202,7 @@ const AddExpenseForm = ({ onSuccess }: AddExpenseFormProps) => {
           </Button>
         </motion.div>
       )}
+      */}
 
       <div className="space-y-2">
         <Label htmlFor="amount" className="text-base">
