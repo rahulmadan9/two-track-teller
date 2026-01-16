@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfiles, Profile } from "./useProfiles";
 import { Database } from "@/integrations/supabase/types";
 import { validateExpense, validatePayment } from "@/lib/validation";
+import { logger } from "@/lib/logger";
 
 type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
 type ExpenseInsert = Database["public"]["Tables"]["expenses"]["Insert"];
@@ -24,7 +25,7 @@ export const useExpenses = () => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching expenses:", error);
+      logger.error("Error fetching expenses", error);
       setLoading(false);
       return;
     }
