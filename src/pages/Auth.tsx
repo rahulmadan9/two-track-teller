@@ -1,28 +1,71 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { getSafeErrorMessage } from "@/lib/errorHandler";
-import { useAuth } from "@/hooks/useAuth";
+import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
+import { RecaptchaVerifier, ConfirmationResult } from "firebase/auth";
+import { auth } from "@/integrations/firebase/config";
+import { createUserProfile } from "@/integrations/firebase/profiles";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { user, loading: authLoading, signInWithPhone, verifyOTP } = useFirebaseAuth();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const recaptchaWidgetId = useRef<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
       navigate("/", { replace: true });
     }
   }, [authLoading, user, navigate]);
+
+  // Cleanup only on unmount
+  useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (error) {
+          console.log('Error clearing reCAPTCHA:', error);
+        }
+        recaptchaVerifierRef.current = null;
+      }
+    };
+  }, []);
+
+  // Initialize reCAPTCHA verifier (lazy initialization)
+  const initializeRecaptcha = () => {
+    if (recaptchaVerifierRef.current) {
+      return recaptchaVerifierRef.current;
+    }
+
+    try {
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          console.log('reCAPTCHA verified');
+        },
+        'expired-callback': () => {
+          console.log('reCAPTCHA expired');
+          toast.error('reCAPTCHA expired. Please try again');
+        }
+      });
+      recaptchaVerifierRef.current = verifier;
+      return verifier;
+    } catch (error) {
+      console.error('Error initializing reCAPTCHA:', error);
+      throw new Error('Failed to initialize reCAPTCHA. Please refresh the page.');
+    }
+  };
 
   if (authLoading) {
     return (
@@ -35,36 +78,61 @@ const Auth = () => {
   // While redirecting away from /auth
   if (user) return null;
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast.success("Welcome back!");
-        navigate("/");
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              display_name: displayName || email.split("@")[0],
-            },
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created! You're now logged in.");
-        navigate("/");
-      }
+      // Initialize or get existing reCAPTCHA verifier
+      const verifier = initializeRecaptcha();
+
+      // Format phone number to E.164 format (must include country code)
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+
+      const result = await signInWithPhone(formattedPhone, verifier);
+      setConfirmationResult(result);
+      setOtpSent(true);
+      toast.success("OTP sent to your phone!");
     } catch (error: unknown) {
-      toast.error(getSafeErrorMessage(error));
+      const errorMessage = error instanceof Error ? error.message : "Failed to send OTP";
+      toast.error(errorMessage);
+
+      // Reset reCAPTCHA on error
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+          recaptchaVerifierRef.current = null;
+        } catch (e) {
+          console.log('Error clearing reCAPTCHA:', e);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (!confirmationResult) {
+        throw new Error('No confirmation result available');
+      }
+
+      const name = displayName.trim() || phoneNumber;
+      await verifyOTP(confirmationResult, otp, name);
+
+      // Create user profile in Firestore
+      if (auth.currentUser) {
+        await createUserProfile(auth.currentUser);
+      }
+
+      toast.success("Successfully logged in!");
+      navigate("/");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to verify OTP";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -75,19 +143,19 @@ const Auth = () => {
       <Card className="w-full max-w-md border-border/50 shadow-lg">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-semibold tracking-tight">
-            {isLogin ? "Welcome back" : "Create account"}
+            {otpSent ? "Verify OTP" : "Sign in with Phone"}
           </CardTitle>
           <CardDescription>
-            {isLogin
-              ? "Sign in to manage your shared expenses"
-              : "Sign up to start splitting expenses"}
+            {otpSent
+              ? "Enter the OTP sent to your phone"
+              : "Enter your phone number to receive an OTP"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
-            {!isLogin && (
+          {!otpSent ? (
+            <form onSubmit={handleSendOTP} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
+                <Label htmlFor="displayName">Display Name (Optional)</Label>
                 <Input
                   id="displayName"
                   type="text"
@@ -96,45 +164,70 @@ const Auth = () => {
                   onChange={(e) => setDisplayName(e.target.value)}
                 />
               </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
-            </Button>
-          </form>
-          {/* Signup functionality disabled - login only for existing accounts
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline font-medium"
-            >
-              {isLogin ? "Sign up" : "Sign in"}
-            </button>
-          </div>
-          */}
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  required
+                  pattern="[0-9]{10}"
+                  title="Please enter a valid 10-digit phone number"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter 10-digit mobile number (India +91)
+                </p>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Sending OTP..." : "Send OTP"}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOTP} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otp">OTP Code</Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  placeholder="Enter 6-digit OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  title="Please enter the 6-digit OTP"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Verifying..." : "Verify OTP"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setOtpSent(false);
+                  setOtp("");
+                  setConfirmationResult(null);
+                  // Clear reCAPTCHA to allow resending
+                  if (recaptchaVerifierRef.current) {
+                    try {
+                      recaptchaVerifierRef.current.clear();
+                      recaptchaVerifierRef.current = null;
+                    } catch (e) {
+                      console.log('Error clearing reCAPTCHA:', e);
+                    }
+                  }
+                }}
+                disabled={loading}
+              >
+                Back to Phone Number
+              </Button>
+            </form>
+          )}
+          <div id="recaptcha-container" className="mt-4 flex justify-center"></div>
         </CardContent>
       </Card>
     </div>

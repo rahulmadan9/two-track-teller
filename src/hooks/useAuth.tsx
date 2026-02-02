@@ -1,42 +1,43 @@
-import { useEffect, useRef, useState } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+import {
+  User,
+  onAuthStateChanged,
+  signOut as firebaseSignOut,
+} from "firebase/auth";
+import { auth } from "@/integrations/firebase/config";
 
+/**
+ * Firebase Auth hook - compatible with previous Supabase useAuth interface
+ * Provides auth state management with Firebase
+ */
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const initializedRef = useRef(false);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        // Avoid briefly marking auth as "done" before we've restored the initial
-        // session from storage (prevents redirects to /auth during hydration).
-        if (initializedRef.current) {
-          setLoading(false);
-        }
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        setUser(currentUser);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Auth state change error:", error);
+        setLoading(false);
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      initializedRef.current = true;
-    });
-
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      console.error("Sign out error:", error);
+      throw new Error("Failed to sign out. Please try again");
+    }
   };
 
-  return { user, session, loading, signOut };
+  return { user, loading, signOut };
 };

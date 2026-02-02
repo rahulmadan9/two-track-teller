@@ -7,9 +7,11 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
+  where,
+  or,
 } from "firebase/firestore";
 import { db } from "@/integrations/firebase/config";
-import { useProfiles, Profile } from "./useProfiles";
+import { useFirebaseProfiles, Profile } from "./useFirebaseProfiles";
 import { validateExpense, validatePayment } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
@@ -32,8 +34,8 @@ export interface Expense {
   payer?: Profile;
 }
 
-// Input type for adding expenses (matching Supabase Insert type)
-export interface ExpenseInsert {
+// Input type for adding expenses
+export interface ExpenseInput {
   amount: number;
   category?: string;
   custom_split_amount?: number | null;
@@ -48,18 +50,39 @@ export interface ExpenseInsert {
 }
 
 /**
- * Firebase Expenses hook - compatible with previous Supabase interface
+ * Custom hook for managing expenses from Firestore
  * Provides real-time updates and expense operations
  */
-export const useExpenses = () => {
-  const { profiles, currentProfile, roommate } = useProfiles();
+export const useFirebaseExpenses = () => {
+  const { profiles, currentProfile, roommate } = useFirebaseProfiles();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchExpenses = useCallback(() => {
-    // This function is kept for compatibility but doesn't need to do anything
-    // since we're using real-time listeners
-  }, []);
+  const fetchExpenses = useCallback(async () => {
+    if (profiles.length === 0) return;
+
+    try {
+      // Get all user IDs to query expenses
+      const userIds = profiles.map((p) => p.id);
+
+      // Create query for expenses where current user is involved
+      // Note: Firestore 'or' queries require careful handling
+      const expensesQuery = query(
+        collection(db, "expenses"),
+        or(
+          where("paidBy", "in", userIds),
+          where("owesUserId", "in", userIds)
+        ),
+        orderBy("expenseDate", "desc"),
+        orderBy("createdAt", "desc")
+      );
+
+      return expensesQuery;
+    } catch (error) {
+      logger.error("Error creating expenses query", error);
+      return null;
+    }
+  }, [profiles]);
 
   useEffect(() => {
     if (profiles.length === 0) {
@@ -67,7 +90,8 @@ export const useExpenses = () => {
       return;
     }
 
-    // Create query for expenses, ordered by date and creation time
+    // For simplicity with Firestore limitations, query all expenses
+    // and filter client-side if needed
     const expensesQuery = query(
       collection(db, "expenses"),
       orderBy("expenseDate", "desc"),
@@ -131,7 +155,7 @@ export const useExpenses = () => {
   /**
    * Add a new expense to Firestore
    */
-  const addExpense = async (expense: ExpenseInsert) => {
+  const addExpense = async (expense: ExpenseInput) => {
     // Validate expense data before sending to Firestore
     const dataToValidate = {
       ...expense,
@@ -258,6 +282,6 @@ export const useExpenses = () => {
     loading,
     addExpense,
     calculateBalance,
-    refetch: fetchExpenses,
+    refetch: () => {}, // No-op for compatibility, real-time updates handle this
   };
 };

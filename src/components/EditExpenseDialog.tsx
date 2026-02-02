@@ -17,14 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/integrations/firebase/config";
 import { toast } from "sonner";
 import { Expense } from "@/hooks/useExpenses";
-import { Database } from "@/integrations/supabase/types";
-import { getSafeErrorMessage } from "@/lib/errorHandler";
 
-type ExpenseCategory = Database["public"]["Enums"]["expense_category"];
-type SplitType = Database["public"]["Enums"]["split_type"];
+type ExpenseCategory = "rent" | "utilities" | "groceries" | "household_supplies" | "shared_meals" | "purchases" | "other";
+type SplitType = "fifty_fifty" | "custom" | "one_owes_all";
 
 interface EditExpenseDialogProps {
   expense: Expense | null;
@@ -75,26 +74,24 @@ const EditExpenseDialog = ({
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("expenses")
-        .update({
-          amount: parseFloat(amount),
-          description,
-          category,
-          split_type: splitType,
-          custom_split_amount: splitType === "custom" ? parseFloat(customAmount) : null,
-          expense_date: date,
-          notes: notes || null,
-        })
-        .eq("id", expense.id);
-
-      if (error) throw error;
+      // Update expense in Firestore
+      await updateDoc(doc(db, "expenses", expense.id), {
+        amount: parseFloat(amount),
+        description,
+        category,
+        splitType: splitType,
+        customSplitAmount: splitType === "custom" ? parseFloat(customAmount) : null,
+        expenseDate: date,
+        notes: notes || null,
+        updatedAt: serverTimestamp(),
+      });
 
       toast.success("Expense updated");
       onSuccess();
       onOpenChange(false);
     } catch (error: unknown) {
-      toast.error(getSafeErrorMessage(error));
+      const errorMessage = error instanceof Error ? error.message : "Failed to update expense";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

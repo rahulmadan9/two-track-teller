@@ -14,9 +14,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Database } from "@/integrations/supabase/types";
 
-type ExpenseCategory = Database["public"]["Enums"]["expense_category"];
+type ExpenseCategory = "rent" | "utilities" | "groceries" | "household_supplies" | "shared_meals" | "purchases" | "other";
 
 export interface FilterState {
   search: string;

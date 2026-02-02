@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Helper function to validate expense data
+    function validateExpense(expense) {
+      return expense.amount > 0 &&
+             expense.amount <= 1000000 &&
+             expense.description.size() > 0 &&
+             expense.description.size() <= 200 &&
+             (expense.notes == null || expense.notes.size() <= 1000) &&
+             expense.splitType in ['fifty_fifty', 'custom', 'one_owes_all'] &&
+             expense.category in ['rent', 'utilities', 'groceries',
+                                  'household_supplies', 'shared_meals',
+                                  'purchases', 'other'];
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles (needed for roommate pairing)
+      allow read: if isAuthenticated();
+
+      // Users can only write to their own profile
+      allow create, update: if isAuthenticated() && isOwner(userId);
+
+      // Users can delete their own profile
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    // Expenses collection rules
+    match /expenses/{expenseId} {
+      // Users can read expenses they're involved in
+      allow read: if isAuthenticated() && (
+        resource.data.paidBy == request.auth.uid ||
+        resource.data.owesUserId == request.auth.uid
+      );
+
+      // Users can create expenses if they paid or are involved
+      allow create: if isAuthenticated() &&
+        validateExpense(request.resource.data) &&
+        (request.resource.data.paidBy == request.auth.uid ||
+         request.resource.data.owesUserId == request.auth.uid);
+
+      // Only the person who paid can update the expense
+      allow update: if isAuthenticated() &&
+        resource.data.paidBy == request.auth.uid &&
+        validateExpense(request.resource.data);
+
+      // Only the person who paid can delete the expense
+      allow delete: if isAuthenticated() &&
+        resource.data.paidBy == request.auth.uid;
+    }
+  }
+}

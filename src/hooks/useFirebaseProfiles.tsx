@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/integrations/firebase/config";
-import { useAuth } from "./useAuth";
+import { useFirebaseAuth } from "./useFirebaseAuth";
 import { logger } from "@/lib/logger";
 
+// Profile interface matching Supabase structure for compatibility
 export interface Profile {
   id: string;
   user_id: string; // Same as id for Firebase (Auth UID)
@@ -12,11 +13,11 @@ export interface Profile {
 }
 
 /**
- * Firebase Profiles hook - compatible with previous Supabase interface
+ * Custom hook for managing user profiles from Firestore
  * Provides real-time updates for all user profiles
  */
-export const useProfiles = () => {
-  const { user } = useAuth();
+export const useFirebaseProfiles = () => {
+  const { user } = useFirebaseAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [roommate, setRoommate] = useState<Profile | null>(null);

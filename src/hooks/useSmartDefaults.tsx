@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Database } from "@/integrations/supabase/types";
 
-type ExpenseCategory = Database["public"]["Enums"]["expense_category"];
-type SplitType = Database["public"]["Enums"]["split_type"];
+type ExpenseCategory = "rent" | "utilities" | "groceries" | "household_supplies" | "shared_meals" | "purchases" | "other";
+type SplitType = "fifty_fifty" | "custom" | "one_owes_all";
 
 interface ExpenseHistory {
   description: string;

@@ -26,11 +26,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { Database } from "@/integrations/supabase/types";
 import { getSafeErrorMessage } from "@/lib/errorHandler";
 
-type ExpenseCategory = Database["public"]["Enums"]["expense_category"];
-type SplitType = Database["public"]["Enums"]["split_type"];
+type ExpenseCategory = "rent" | "utilities" | "groceries" | "household_supplies" | "shared_meals" | "purchases" | "other";
+type SplitType = "fifty_fifty" | "custom" | "one_owes_all";
 
 const categories: { value: ExpenseCategory; label: string }[] = [
   { value: "rent", label: "Rent" },

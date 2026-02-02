@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useProfiles } from "@/hooks/useProfiles";
-import { supabase } from "@/integrations/supabase/client";
+import { doc, deleteDoc } from "firebase/firestore";
+import { db } from "@/integrations/firebase/config";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MonthSelector from "./MonthSelector";
@@ -145,11 +146,7 @@ const ExpensesView = () => {
     setDeletingExpense(null);
 
     try {
-      const { error } = await supabase
-        .from("expenses")
-        .delete()
-        .eq("id", deletingExpense.id);
-      if (error) throw error;
+      await deleteDoc(doc(db, "expenses", deletingExpense.id));
       toast.success("Expense deleted");
       refetch();
     } catch (error: any) {
