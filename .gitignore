@@ -32,3 +32,8 @@ ui-debug.log
 functions/lib/
 functions/node_modules/
 .firebaserc.local
+
+# Environment variables
+.env
+.env.local
+.env.*.local
