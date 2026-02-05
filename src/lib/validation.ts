@@ -15,7 +15,7 @@ export const expenseSchema = z.object({
     .number()
     .positive("Amount must be greater than 0")
     .max(1000000, "Amount cannot exceed ₹10,00,000"),
-  paid_by: z.string().uuid("Invalid payer"),
+  paid_by: z.string().min(1, "Invalid payer"),
   split_type: z.enum(["fifty_fifty", "custom", "one_owes_all"], {
     errorMap: () => ({ message: "Invalid split type" }),
   }),
@@ -34,8 +34,8 @@ export const expenseSchema = z.object({
     .optional()
     .transform((val) => (val ? val.trim() : val)),
   is_payment: z.boolean().optional().default(false),
-  owes_user_id: z.string().uuid().nullable().optional(),
-  group_id: z.string().uuid().nullable().optional(),
+  owes_user_id: z.string().min(1).nullable().optional(),
+  group_id: z.string().min(1).nullable().optional(),
 });
 
 /**
@@ -76,7 +76,7 @@ export const paymentSchema = z.object({
     .number()
     .positive("Amount must be greater than 0")
     .max(1000000, "Amount cannot exceed ₹10,00,000"),
-  paid_by: z.string().uuid("Invalid payer"),
+  paid_by: z.string().min(1, "Invalid payer"),
   split_type: z.literal("one_owes_all"),
   category: z.literal("other"),
   expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),

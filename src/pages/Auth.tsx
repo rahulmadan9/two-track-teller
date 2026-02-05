@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import { RecaptchaVerifier, ConfirmationResult } from "firebase/auth";
 import { auth } from "@/integrations/firebase/config";
 import { createUserProfile } from "@/integrations/firebase/profiles";
+import { ChevronDown } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,6 +22,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [showNameField, setShowNameField] = useState(false);
+  const [savedDisplayName, setSavedDisplayName] = useState<string>("");
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const recaptchaWidgetId = useRef<number | null>(null);
 
@@ -27,6 +32,22 @@ const Auth = () => {
       navigate("/", { replace: true });
     }
   }, [authLoading, user, navigate]);
+
+  // Load saved display name from localStorage
+  useEffect(() => {
+    const lastName = localStorage.getItem('spliteasy_lastDisplayName');
+    if (lastName) {
+      setSavedDisplayName(lastName);
+      setShowNameField(true); // Auto-expand for returning users
+    }
+  }, []);
+
+  // Pre-fill name when field expands and saved name exists
+  useEffect(() => {
+    if (showNameField && savedDisplayName && !displayName) {
+      setDisplayName(savedDisplayName);
+    }
+  }, [showNameField, savedDisplayName]);
 
   // Cleanup only on unmount
   useEffect(() => {
@@ -128,6 +149,11 @@ const Auth = () => {
         await createUserProfile(auth.currentUser);
       }
 
+      // Save display name to localStorage for returning users
+      if (displayName.trim()) {
+        localStorage.setItem('spliteasy_lastDisplayName', displayName.trim());
+      }
+
       toast.success("Successfully logged in!");
       navigate("/");
     } catch (error: unknown) {
@@ -154,16 +180,31 @@ const Auth = () => {
         <CardContent>
           {!otpSent ? (
             <form onSubmit={handleSendOTP} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name (Optional)</Label>
-                <Input
-                  id="displayName"
-                  type="text"
-                  placeholder="Your name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                />
-              </div>
+              <Collapsible open={showNameField} onOpenChange={setShowNameField}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-between text-muted-foreground h-10 px-3"
+                  >
+                    <span className="text-sm flex items-center gap-2">
+                      Add your name (optional)
+                      {savedDisplayName && <Badge variant="secondary" className="text-xs">Saved</Badge>}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showNameField ? "rotate-180" : ""}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 pt-2">
+                  <Label htmlFor="displayName">Display Name</Label>
+                  <Input
+                    id="displayName"
+                    type="text"
+                    placeholder="Your name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number</Label>
                 <Input

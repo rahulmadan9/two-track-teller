@@ -7,8 +7,10 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
+  where,
 } from "firebase/firestore";
 import { db } from "@/integrations/firebase/config";
+import { useAuth } from "./useAuth";
 import { useProfiles, Profile } from "./useProfiles";
 import { validateExpense, validatePayment } from "@/lib/validation";
 import { logger } from "@/lib/logger";
@@ -52,6 +54,7 @@ export interface ExpenseInsert {
  * Provides real-time updates and expense operations
  */
 export const useExpenses = () => {
+  const { user } = useAuth();
   const { profiles, currentProfile, roommate } = useProfiles();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,71 +65,123 @@ export const useExpenses = () => {
   }, []);
 
   useEffect(() => {
-    if (profiles.length === 0) {
+    // Wait for authenticated user - available immediately from Firebase Auth
+    if (!user) {
+      setExpenses([]);
       setLoading(false);
       return;
     }
 
-    // Create query for expenses, ordered by date and creation time
-    const expensesQuery = query(
+    // Use user.uid directly - avoids race condition with profile loading
+    const currentUserId = user.uid;
+
+    // Track expenses from both queries separately
+    let paidByExpenses: Expense[] = [];
+    let owesExpenses: Expense[] = [];
+    let paidByLoaded = false;
+    let owesLoaded = false;
+
+    const mergeAndUpdateExpenses = () => {
+      if (paidByLoaded && owesLoaded) {
+        // Merge both arrays, removing duplicates by ID
+        const expensesMap = new Map<string, Expense>();
+        [...paidByExpenses, ...owesExpenses].forEach(expense => {
+          expensesMap.set(expense.id, expense);
+        });
+
+        const mergedExpenses = Array.from(expensesMap.values())
+          .sort((a, b) => {
+            // Sort by expense_date desc, then created_at desc
+            if (a.expense_date !== b.expense_date) {
+              return b.expense_date.localeCompare(a.expense_date);
+            }
+            return b.created_at.localeCompare(a.created_at);
+          });
+
+        setExpenses(mergedExpenses);
+        setLoading(false);
+      }
+    };
+
+    const processExpenseDoc = (doc: any): Expense => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        amount: data.amount || 0,
+        category: data.category || "other",
+        created_at:
+          data.createdAt instanceof Timestamp
+            ? data.createdAt.toDate().toISOString()
+            : new Date().toISOString(),
+        custom_split_amount: data.customSplitAmount ?? null,
+        description: data.description || "",
+        expense_date: data.expenseDate || new Date().toISOString().split("T")[0],
+        group_id: data.groupId ?? null,
+        is_payment: data.isPayment || false,
+        notes: data.notes ?? null,
+        owes_user_id: data.owesUserId ?? null,
+        paid_by: data.paidBy || "",
+        split_type: data.splitType || "fifty_fifty",
+        updated_at:
+          data.updatedAt instanceof Timestamp
+            ? data.updatedAt.toDate().toISOString()
+            : new Date().toISOString(),
+        payer: profiles.find((p) => p.id === data.paidBy),
+      };
+    };
+
+    // Query 1: Expenses where current user is the payer
+    const paidByQuery = query(
       collection(db, "expenses"),
+      where("paidBy", "==", currentUserId),
       orderBy("expenseDate", "desc"),
       orderBy("createdAt", "desc")
     );
 
-    // Subscribe to real-time updates
-    const unsubscribe = onSnapshot(
-      expensesQuery,
+    // Query 2: Expenses where current user owes
+    const owesQuery = query(
+      collection(db, "expenses"),
+      where("owesUserId", "==", currentUserId),
+      orderBy("expenseDate", "desc"),
+      orderBy("createdAt", "desc")
+    );
+
+    // Subscribe to both queries
+    const unsubscribePaidBy = onSnapshot(
+      paidByQuery,
       (snapshot) => {
-        const expensesData: Expense[] = snapshot.docs
-          .map((doc) => {
-            const data = doc.data();
-
-            // Convert Firestore document to Expense format
-            return {
-              id: doc.id,
-              amount: data.amount || 0,
-              category: data.category || "other",
-              created_at:
-                data.createdAt instanceof Timestamp
-                  ? data.createdAt.toDate().toISOString()
-                  : new Date().toISOString(),
-              custom_split_amount: data.customSplitAmount ?? null,
-              description: data.description || "",
-              expense_date: data.expenseDate || new Date().toISOString().split("T")[0],
-              group_id: data.groupId ?? null,
-              is_payment: data.isPayment || false,
-              notes: data.notes ?? null,
-              owes_user_id: data.owesUserId ?? null,
-              paid_by: data.paidBy || "",
-              split_type: data.splitType || "fifty_fifty",
-              updated_at:
-                data.updatedAt instanceof Timestamp
-                  ? data.updatedAt.toDate().toISOString()
-                  : new Date().toISOString(),
-              payer: profiles.find((p) => p.id === data.paidBy),
-            };
-          })
-          .filter((expense) => {
-            // Filter to only show expenses involving current users
-            const userIds = profiles.map((p) => p.id);
-            return (
-              userIds.includes(expense.paid_by) ||
-              (expense.owes_user_id && userIds.includes(expense.owes_user_id))
-            );
-          });
-
-        setExpenses(expensesData);
-        setLoading(false);
+        paidByExpenses = snapshot.docs.map(processExpenseDoc);
+        paidByLoaded = true;
+        mergeAndUpdateExpenses();
       },
       (error) => {
-        logger.error("Error fetching expenses", error);
-        setLoading(false);
+        logger.error("Error fetching expenses (paidBy)", error);
+        paidByExpenses = [];
+        paidByLoaded = true;
+        mergeAndUpdateExpenses();
       }
     );
 
-    return () => unsubscribe();
-  }, [profiles]);
+    const unsubscribeOwes = onSnapshot(
+      owesQuery,
+      (snapshot) => {
+        owesExpenses = snapshot.docs.map(processExpenseDoc);
+        owesLoaded = true;
+        mergeAndUpdateExpenses();
+      },
+      (error) => {
+        logger.error("Error fetching expenses (owesUserId)", error);
+        owesExpenses = [];
+        owesLoaded = true;
+        mergeAndUpdateExpenses();
+      }
+    );
+
+    return () => {
+      unsubscribePaidBy();
+      unsubscribeOwes();
+    };
+  }, [user, profiles]);
 
   /**
    * Add a new expense to Firestore

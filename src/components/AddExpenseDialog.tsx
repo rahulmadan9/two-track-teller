@@ -92,6 +92,7 @@ const AddExpenseDialog = () => {
     try {
       const finalCategory = category === "auto" ? autoCategorize(description) : category;
       const paidById = paidBy === "me" ? currentProfile.id : roommate?.id;
+      const owesUserId = paidBy === "me" ? roommate?.id : currentProfile.id;
 
       if (!paidById) {
         toast.error("Could not determine payer");
@@ -102,6 +103,7 @@ const AddExpenseDialog = () => {
         description,
         amount: parseFloat(amount),
         paid_by: paidById,
+        owes_user_id: owesUserId || null,
         split_type: splitType,
         custom_split_amount: splitType === "custom" ? parseFloat(customAmount) : null,
         category: finalCategory,
