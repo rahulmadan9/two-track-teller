@@ -293,4 +293,3 @@ For issues or questions:
 - Built with [Vite](https://vitejs.dev/)
 - UI components from [shadcn/ui](https://ui.shadcn.com/)
 - Backend powered by [Firebase](https://firebase.google.com/)
-- Originally created with [Lovable](https://lovable.dev/)

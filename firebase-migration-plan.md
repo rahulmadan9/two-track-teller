@@ -1,7 +1,7 @@
 # Supabase to Firebase Migration Plan
 
 ## Overview
-Migrate expense-splitting app from Lovable Cloud (Supabase) to Firebase with a balanced approach over 2-3 weeks. No historical data migration (starting fresh).
+Migrate expense-splitting app from Supabase to Firebase with a balanced approach over 2-3 weeks. No historical data migration (starting fresh).
 
 ## User Preferences
 - **Timeline**: Balanced approach (2-3 weeks)
