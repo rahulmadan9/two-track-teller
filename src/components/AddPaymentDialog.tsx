@@ -27,7 +27,7 @@ const AddPaymentDialog = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentProfile) return;
+    if (!currentProfile || !roommate) return;
 
     setLoading(true);
 
@@ -36,6 +36,7 @@ const AddPaymentDialog = () => {
         description: "Payment",
         amount: parseFloat(amount),
         paid_by: currentProfile.id,
+        owes_user_id: roommate.id,
         split_type: "one_owes_all",
         category: "other",
         expense_date: new Date().toISOString().split("T")[0],
