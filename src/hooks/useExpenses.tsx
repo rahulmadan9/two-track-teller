@@ -13,6 +13,7 @@ import { db } from "@/integrations/firebase/config";
 import { useAuth } from "./useAuth";
 import { useProfiles, Profile } from "./useProfiles";
 import { validateExpense, validatePayment } from "@/lib/validation";
+import { calculateNetBalance } from "@/lib/balanceCalculation";
 import { logger } from "@/lib/logger";
 
 // Expense interface matching Supabase structure for compatibility
@@ -117,7 +118,7 @@ export const useExpenses = () => {
         description: data.description || "",
         expense_date: data.expenseDate || new Date().toISOString().split("T")[0],
         group_id: data.groupId ?? null,
-        is_payment: data.isPayment || false,
+        is_payment: data.isPayment === true,
         notes: data.notes ?? null,
         owes_user_id: data.owesUserId ?? null,
         paid_by: data.paidBy || "",
@@ -232,7 +233,7 @@ export const useExpenses = () => {
       category: expense.category || "other",
       expenseDate: expense.expense_date || new Date().toISOString().split("T")[0],
       notes: expense.notes || null,
-      isPayment: expense.is_payment || false,
+      isPayment: expense.is_payment === true,
       groupId: expense.group_id || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -258,54 +259,7 @@ export const useExpenses = () => {
       return { amount: 0, oweDirection: "settled" };
     }
 
-    let youOweRoommate = 0;
-    let roommateOwesYou = 0;
-
-    expenses.forEach((expense) => {
-      const amount = Number(expense.amount);
-      const isPayment = expense.is_payment;
-      const paidByMe = expense.paid_by === currentProfile.id;
-
-      if (isPayment) {
-        // Payments reduce what the payer owes
-        if (paidByMe) {
-          youOweRoommate -= amount;
-        } else {
-          roommateOwesYou -= amount;
-        }
-      } else {
-        // Regular expense
-        let splitAmount = 0;
-
-        switch (expense.split_type) {
-          case "fifty_fifty":
-            splitAmount = amount / 2;
-            break;
-          case "custom":
-            splitAmount = Number(expense.custom_split_amount) || 0;
-            break;
-          case "one_owes_all":
-            splitAmount = amount;
-            break;
-        }
-
-        if (paidByMe) {
-          roommateOwesYou += splitAmount;
-        } else {
-          youOweRoommate += splitAmount;
-        }
-      }
-    });
-
-    const netBalance = roommateOwesYou - youOweRoommate;
-
-    if (Math.abs(netBalance) < 0.01) {
-      return { amount: 0, oweDirection: "settled" };
-    } else if (netBalance > 0) {
-      return { amount: netBalance, oweDirection: "they_owe" };
-    } else {
-      return { amount: Math.abs(netBalance), oweDirection: "you_owe" };
-    }
+    return calculateNetBalance(expenses, currentProfile.id, roommate.id);
   };
 
   return {

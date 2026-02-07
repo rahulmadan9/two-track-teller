@@ -29,6 +29,14 @@ const AddPaymentDialog = () => {
     e.preventDefault();
     if (!currentProfile || !roommate) return;
 
+    const paymentAmount = parseFloat(amount);
+
+    // Overpayment guard: only check when user owes roommate
+    if (oweDirection === "you_owe" && paymentAmount > balanceAmount + 0.01) {
+      toast.error(`Payment exceeds balance owed (₹${balanceAmount.toFixed(2)})`);
+      return;
+    }
+
     setLoading(true);
 
     try {

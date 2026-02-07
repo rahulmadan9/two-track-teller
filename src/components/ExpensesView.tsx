@@ -17,6 +17,7 @@ import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ExportButton from "./ExportButton";
 import SwipeableExpenseItem from "./SwipeableExpenseItem";
 import { Expense } from "@/hooks/useExpenses";
+import { calculateRunningBalances } from "@/lib/balanceCalculation";
 
 const ExpensesView = () => {
   const { expenses, loading, refetch } = useExpenses();
@@ -91,46 +92,20 @@ const ExpensesView = () => {
 
   // Calculate running balance for ledger view (reverse chronological becomes chronological for balance calc)
   const expensesWithRunningBalance = useMemo(() => {
+    if (!currentProfile?.id || !roommate?.id) return filteredExpenses.map(e => ({ ...e, runningBalance: 0 }));
+
     const sorted = [...filteredExpenses].sort(
       (a, b) =>
         new Date(a.expense_date).getTime() - new Date(b.expense_date).getTime()
     );
 
-    let runningBalance = 0;
-    return sorted.map((expense) => {
-      const amount = Number(expense.amount);
-      const paidByMe = expense.paid_by === currentProfile?.id;
+    const balances = calculateRunningBalances(sorted, currentProfile.id, roommate.id);
 
-      if (expense.is_payment) {
-        if (paidByMe) {
-          runningBalance -= amount;
-        } else {
-          runningBalance += amount;
-        }
-      } else {
-        let splitAmount = 0;
-        switch (expense.split_type) {
-          case "fifty_fifty":
-            splitAmount = amount / 2;
-            break;
-          case "custom":
-            splitAmount = Number(expense.custom_split_amount) || 0;
-            break;
-          case "one_owes_all":
-            splitAmount = amount;
-            break;
-        }
-
-        if (paidByMe) {
-          runningBalance += splitAmount;
-        } else {
-          runningBalance -= splitAmount;
-        }
-      }
-
-      return { ...expense, runningBalance };
-    });
-  }, [filteredExpenses, currentProfile?.id]);
+    return sorted.map((expense, index) => ({
+      ...expense,
+      runningBalance: balances[index],
+    }));
+  }, [filteredExpenses, currentProfile?.id, roommate?.id]);
 
   // Reverse for display (newest first)
   const displayExpenses = [...expensesWithRunningBalance].reverse();

@@ -21,6 +21,7 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/integrations/firebase/config";
 import { toast } from "sonner";
 import { Expense } from "@/hooks/useExpenses";
+import { validateExpense, validatePayment } from "@/lib/validation";
 
 type ExpenseCategory = "rent" | "utilities" | "groceries" | "household_supplies" | "shared_meals" | "purchases" | "other";
 type SplitType = "fifty_fifty" | "custom" | "one_owes_all";
@@ -69,24 +70,68 @@ const EditExpenseDialog = ({
     }
   }, [expense]);
 
+  const isPayment = expense?.is_payment === true;
+
   const handleSave = async () => {
     if (!expense) return;
     setLoading(true);
 
     try {
-      // Update expense in Firestore
-      await updateDoc(doc(db, "expenses", expense.id), {
-        amount: parseFloat(amount),
-        description,
-        category,
-        splitType: splitType,
-        customSplitAmount: splitType === "custom" ? parseFloat(customAmount) : null,
-        expenseDate: date,
-        notes: notes || null,
-        updatedAt: serverTimestamp(),
-      });
+      const parsedAmount = parseFloat(amount);
 
-      toast.success("Expense updated");
+      if (isPayment) {
+        // Payments: only allow amount and date changes, validate as payment
+        const result = validatePayment({
+          description: expense.description,
+          amount: parsedAmount,
+          paid_by: expense.paid_by,
+          split_type: "one_owes_all",
+          category: "other",
+          expense_date: date,
+          is_payment: true,
+        });
+        if (result.success === false) {
+          toast.error(result.error);
+          return;
+        }
+
+        await updateDoc(doc(db, "expenses", expense.id), {
+          amount: parsedAmount,
+          expenseDate: date,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        // Regular expenses: validate all fields
+        const result = validateExpense({
+          description,
+          amount: parsedAmount,
+          paid_by: expense.paid_by,
+          split_type: splitType,
+          custom_split_amount: splitType === "custom" ? parseFloat(customAmount) : null,
+          category,
+          expense_date: date,
+          notes: notes || null,
+          is_payment: false,
+          owes_user_id: expense.owes_user_id,
+        });
+        if (result.success === false) {
+          toast.error(result.error);
+          return;
+        }
+
+        await updateDoc(doc(db, "expenses", expense.id), {
+          amount: parsedAmount,
+          description,
+          category,
+          splitType: splitType,
+          customSplitAmount: splitType === "custom" ? parseFloat(customAmount) : null,
+          expenseDate: date,
+          notes: notes || null,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      toast.success(isPayment ? "Payment updated" : "Expense updated");
       onSuccess();
       onOpenChange(false);
     } catch (error: unknown) {
@@ -101,7 +146,7 @@ const EditExpenseDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Expense</DialogTitle>
+          <DialogTitle>{isPayment ? "Edit Payment" : "Edit Expense"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -111,64 +156,70 @@ const EditExpenseDialog = ({
               id="edit-amount"
               type="number"
               step="0.01"
+              min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="h-12"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-description">Description</Label>
-            <Input
-              id="edit-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="h-12"
-            />
-          </div>
+          {!isPayment && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Input
+                  id="edit-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="h-12"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as ExpenseCategory)}>
-              <SelectTrigger className="h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={category} onValueChange={(v) => setCategory(v as ExpenseCategory)}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-2">
-            <Label>Split Type</Label>
-            <Select value={splitType} onValueChange={(v) => setSplitType(v as SplitType)}>
-              <SelectTrigger className="h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fifty_fifty">50/50</SelectItem>
-                <SelectItem value="custom">Custom amount</SelectItem>
-                <SelectItem value="one_owes_all">One owes all</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-2">
+                <Label>Split Type</Label>
+                <Select value={splitType} onValueChange={(v) => setSplitType(v as SplitType)}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fifty_fifty">50/50</SelectItem>
+                    <SelectItem value="custom">Custom amount</SelectItem>
+                    <SelectItem value="one_owes_all">One owes all</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {splitType === "custom" && (
-            <div className="space-y-2">
-              <Label htmlFor="edit-custom">Custom Split Amount</Label>
-              <Input
-                id="edit-custom"
-                type="number"
-                step="0.01"
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                className="h-12"
-              />
-            </div>
+              {splitType === "custom" && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-custom">Custom Split Amount</Label>
+                  <Input
+                    id="edit-custom"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+              )}
+            </>
           )}
 
           <div className="space-y-2">
@@ -182,15 +233,17 @@ const EditExpenseDialog = ({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-notes">Notes</Label>
-            <Textarea
-              id="edit-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
-          </div>
+          {!isPayment && (
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Notes</Label>
+              <Textarea
+                id="edit-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter>

@@ -1,5 +1,6 @@
 import { Expense } from "@/hooks/useExpenses";
 import { Profile } from "@/hooks/useProfiles";
+import { calculateNetBalance } from "@/lib/balanceCalculation";
 
 interface MonthSummaryProps {
   expenses: Expense[];
@@ -29,43 +30,16 @@ const MonthSummary = ({
     .filter((e) => e.paid_by === roommate?.id)
     .reduce((sum, e) => sum + Number(e.amount), 0);
 
-  // Calculate net balance for this month
-  let youOwe = 0;
-  let theyOwe = 0;
+  // Calculate net balance for this month using shared utility
+  const balanceResult = currentProfile && roommate
+    ? calculateNetBalance(expenses, currentProfile.id, roommate.id)
+    : { amount: 0, oweDirection: "settled" as const };
 
-  expenses.forEach((expense) => {
-    const amount = Number(expense.amount);
-    const paidByMe = expense.paid_by === currentProfile?.id;
-
-    if (expense.is_payment) {
-      if (paidByMe) {
-        youOwe -= amount;
-      } else {
-        theyOwe -= amount;
-      }
-    } else {
-      let splitAmount = 0;
-      switch (expense.split_type) {
-        case "fifty_fifty":
-          splitAmount = amount / 2;
-          break;
-        case "custom":
-          splitAmount = Number(expense.custom_split_amount) || 0;
-          break;
-        case "one_owes_all":
-          splitAmount = amount;
-          break;
-      }
-
-      if (paidByMe) {
-        theyOwe += splitAmount;
-      } else {
-        youOwe += splitAmount;
-      }
-    }
-  });
-
-  const netBalance = theyOwe - youOwe;
+  const netBalance = balanceResult.oweDirection === "they_owe"
+    ? balanceResult.amount
+    : balanceResult.oweDirection === "you_owe"
+    ? -balanceResult.amount
+    : 0;
 
   return (
     <div className="grid grid-cols-2 gap-3">
