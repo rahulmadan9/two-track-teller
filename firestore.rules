@@ -45,10 +45,11 @@ service cloud.firestore {
         resource.data.owesUserId == request.auth.uid
       );
 
-      // Users can create expenses if they are the payer
+      // Users can create expenses if they are involved (payer or ower)
       allow create: if isAuthenticated() &&
         validateExpense(request.resource.data) &&
-        request.resource.data.paidBy == request.auth.uid;
+        (request.resource.data.paidBy == request.auth.uid ||
+         request.resource.data.owesUserId == request.auth.uid);
 
       // Only the person who paid can update the expense
       allow update: if isAuthenticated() &&
