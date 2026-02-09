@@ -8,8 +8,9 @@ import BottomNav from "@/components/BottomNav";
 import BalanceView from "@/components/BalanceView";
 import ExpensesView from "@/components/ExpensesView";
 import AddExpenseForm from "@/components/AddExpenseForm";
+import RecurringView from "@/components/RecurringView";
 
-type TabType = "balance" | "expenses" | "add";
+type TabType = "balance" | "recurring" | "expenses" | "add";
 
 const Dashboard = () => {
   const { signOut } = useAuth();
@@ -34,6 +35,8 @@ const Dashboard = () => {
     switch (activeTab) {
       case "balance":
         return "Balance";
+      case "recurring":
+        return "Recurring";
       case "expenses":
         return "Expenses";
       case "add":
@@ -83,6 +86,18 @@ const Dashboard = () => {
               transition={{ duration: 0.2 }}
             >
               <BalanceView />
+            </motion.div>
+          )}
+
+          {activeTab === "recurring" && (
+            <motion.div
+              key="recurring"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <RecurringView />
             </motion.div>
           )}
 

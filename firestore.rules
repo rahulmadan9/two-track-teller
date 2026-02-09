@@ -60,5 +60,47 @@ service cloud.firestore {
       allow delete: if isAuthenticated() &&
         resource.data.paidBy == request.auth.uid;
     }
+
+    // Recurring expenses collection rules
+    match /recurringExpenses/{docId} {
+      // Read: shared items visible to all authenticated users; personal items only to creator
+      allow read: if isAuthenticated() && (
+        resource.data.expenseType == 'shared' ||
+        resource.data.createdBy == request.auth.uid
+      );
+
+      // Create: creator must match auth
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid;
+
+      // Update: creator or involved in shared expense
+      allow update: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        (resource.data.expenseType == 'shared' && (
+          resource.data.typicallyPaidBy == request.auth.uid ||
+          resource.data.owesUserId == request.auth.uid
+        ))
+      );
+
+      // Delete: only creator
+      allow delete: if isAuthenticated() &&
+        resource.data.createdBy == request.auth.uid;
+    }
+
+    // Recurring confirmations collection rules
+    match /recurringConfirmations/{docId} {
+      // Read: any authenticated user
+      allow read: if isAuthenticated();
+
+      // Create: confirmedBy must match auth
+      allow create: if isAuthenticated() &&
+        request.resource.data.confirmedBy == request.auth.uid;
+
+      // No updates (immutable)
+
+      // Delete: only by the confirmer
+      allow delete: if isAuthenticated() &&
+        resource.data.confirmedBy == request.auth.uid;
+    }
   }
 }

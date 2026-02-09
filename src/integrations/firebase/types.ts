@@ -83,3 +83,44 @@ export interface UpdateExpenseInput {
   notes?: string | null;
   isPayment?: boolean;
 }
+
+/**
+ * Recurring expense type - shared between roommates or personal
+ */
+export type RecurringExpenseType = 'shared' | 'personal';
+
+/**
+ * Recurring expense template in Firestore
+ */
+export interface FirebaseRecurringExpense {
+  id: string;
+  description: string;
+  defaultAmount: number;
+  category: ExpenseCategory;
+  expenseType: RecurringExpenseType;
+  splitType: SplitType;
+  customSplitAmount: number | null;
+  typicallyPaidBy: string;
+  typicallyPaidByName: string;
+  owesUserId: string | null;
+  owesUserName: string | null;
+  createdBy: string;
+  createdByName: string;
+  isActive: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/**
+ * Confirmation record for a recurring expense in a given month
+ */
+export interface FirebaseRecurringConfirmation {
+  id: string;
+  recurringExpenseId: string;
+  monthKey: string; // "YYYY-MM"
+  confirmedAmount: number;
+  confirmedBy: string;
+  confirmedByName: string;
+  expenseId: string; // FK to expenses collection
+  confirmedAt: Timestamp;
+}

@@ -87,6 +87,60 @@ export type ExpenseInput = z.infer<typeof expenseSchemaWithRefinement>;
 export type PaymentInput = z.infer<typeof paymentSchema>;
 
 /**
+ * Recurring expense template validation schema
+ */
+export const recurringExpenseSchema = z.object({
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(200, "Description must be less than 200 characters")
+    .transform((val) => val.trim()),
+  default_amount: z
+    .number()
+    .positive("Amount must be greater than 0")
+    .max(1000000, "Amount cannot exceed ₹10,00,000"),
+  expense_type: z.enum(["shared", "personal"], {
+    errorMap: () => ({ message: "Invalid expense type" }),
+  }),
+  category: z.enum(
+    ["rent", "utilities", "groceries", "household_supplies", "shared_meals", "purchases", "other"],
+    { errorMap: () => ({ message: "Invalid category" }) }
+  ),
+  split_type: z.enum(["fifty_fifty", "custom", "one_owes_all"], {
+    errorMap: () => ({ message: "Invalid split type" }),
+  }),
+  custom_split_amount: z.number().min(0).nullable().optional(),
+  typically_paid_by: z.string().min(1, "Payer is required"),
+  owes_user_id: z.string().min(1).nullable().optional(),
+});
+
+export const recurringExpenseSchemaWithRefinement = recurringExpenseSchema.refine(
+  (data) => {
+    if (data.split_type === "custom" && data.custom_split_amount !== null && data.custom_split_amount !== undefined) {
+      return data.custom_split_amount <= data.default_amount;
+    }
+    return true;
+  },
+  {
+    message: "Custom split amount cannot exceed the default amount",
+    path: ["custom_split_amount"],
+  }
+);
+
+/**
+ * Recurring confirmation validation schema (amount only)
+ */
+export const recurringConfirmSchema = z.object({
+  amount: z
+    .number()
+    .positive("Amount must be greater than 0")
+    .max(1000000, "Amount cannot exceed ₹10,00,000"),
+});
+
+export type RecurringExpenseInput = z.infer<typeof recurringExpenseSchemaWithRefinement>;
+export type RecurringConfirmInput = z.infer<typeof recurringConfirmSchema>;
+
+/**
  * Validates expense data and returns either the validated data or a user-friendly error message
  */
 export const validateExpense = (
@@ -118,5 +172,39 @@ export const validatePayment = (
       return { success: false, error: error.errors[0]?.message || "Invalid payment data" };
     }
     return { success: false, error: "Invalid payment data" };
+  }
+};
+
+/**
+ * Validates recurring expense template data
+ */
+export const validateRecurringExpense = (
+  data: unknown
+): { success: true; data: RecurringExpenseInput } | { success: false; error: string } => {
+  try {
+    const validated = recurringExpenseSchemaWithRefinement.parse(data);
+    return { success: true, data: validated };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors[0]?.message || "Invalid recurring expense data" };
+    }
+    return { success: false, error: "Invalid recurring expense data" };
+  }
+};
+
+/**
+ * Validates recurring confirmation amount
+ */
+export const validateRecurringConfirm = (
+  data: unknown
+): { success: true; data: RecurringConfirmInput } | { success: false; error: string } => {
+  try {
+    const validated = recurringConfirmSchema.parse(data);
+    return { success: true, data: validated };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors[0]?.message || "Invalid confirmation data" };
+    }
+    return { success: false, error: "Invalid confirmation data" };
   }
 };
