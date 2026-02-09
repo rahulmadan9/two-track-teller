@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { RecurringItemWithStatus } from "@/hooks/useRecurringExpenses";
+import { calculateAmount } from "@/lib/amountCalculator";
 
 interface ConfirmRecurringDialogProps {
   item: RecurringItemWithStatus | null;
@@ -35,6 +36,13 @@ const ConfirmRecurringDialog = ({
       setAmount(String(item.defaultAmount));
     }
     onOpenChange(isOpen);
+  };
+
+  const handleAmountBlur = () => {
+    const calculated = calculateAmount(amount);
+    if (calculated !== amount) {
+      setAmount(calculated);
+    }
   };
 
   const handleConfirm = async () => {
@@ -79,11 +87,17 @@ const ConfirmRecurringDialog = ({
             <Label htmlFor="confirm-amount">Amount</Label>
             <Input
               id="confirm-amount"
-              type="number"
-              step="0.01"
-              min="0.01"
+              type="text"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onBlur={handleAmountBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAmountBlur();
+                }
+              }}
               className="h-12 text-lg"
             />
             {parseFloat(amount) !== item.defaultAmount && amount !== "" && (

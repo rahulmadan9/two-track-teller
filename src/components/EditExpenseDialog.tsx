@@ -22,6 +22,7 @@ import { db } from "@/integrations/firebase/config";
 import { toast } from "sonner";
 import { Expense } from "@/hooks/useExpenses";
 import { validateExpense, validatePayment } from "@/lib/validation";
+import { calculateAmount } from "@/lib/amountCalculator";
 
 type ExpenseCategory = "rent" | "utilities" | "groceries" | "household_supplies" | "shared_meals" | "purchases" | "other";
 type SplitType = "fifty_fifty" | "custom" | "one_owes_all";
@@ -71,6 +72,20 @@ const EditExpenseDialog = ({
   }, [expense]);
 
   const isPayment = expense?.is_payment === true;
+
+  const handleAmountBlur = () => {
+    const calculated = calculateAmount(amount);
+    if (calculated !== amount) {
+      setAmount(calculated);
+    }
+  };
+
+  const handleCustomAmountBlur = () => {
+    const calculated = calculateAmount(customAmount);
+    if (calculated !== customAmount) {
+      setCustomAmount(calculated);
+    }
+  };
 
   const handleSave = async () => {
     if (!expense) return;
@@ -154,11 +169,16 @@ const EditExpenseDialog = ({
             <Label htmlFor="edit-amount">Amount</Label>
             <Input
               id="edit-amount"
-              type="number"
-              step="0.01"
-              min="0.01"
+              type="text"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onBlur={handleAmountBlur}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleAmountBlur();
+                }
+              }}
               className="h-12"
             />
           </div>
@@ -210,11 +230,16 @@ const EditExpenseDialog = ({
                   <Label htmlFor="edit-custom">Custom Split Amount</Label>
                   <Input
                     id="edit-custom"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={customAmount}
                     onChange={(e) => setCustomAmount(e.target.value)}
+                    onBlur={handleCustomAmountBlur}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleCustomAmountBlur();
+                      }
+                    }}
                     className="h-12"
                   />
                 </div>

@@ -1,19 +1,16 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@/hooks/useAuth";
 import { useProfiles } from "@/hooks/useProfiles";
-import { LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/BottomNav";
 import BalanceView from "@/components/BalanceView";
 import ExpensesView from "@/components/ExpensesView";
 import AddExpenseForm from "@/components/AddExpenseForm";
 import RecurringView from "@/components/RecurringView";
+import ProfileView from "@/components/ProfileView";
 
-type TabType = "balance" | "recurring" | "expenses" | "add";
+type TabType = "balance" | "recurring" | "expenses" | "add" | "profile";
 
 const Dashboard = () => {
-  const { signOut } = useAuth();
   const { currentProfile, roommate, loading } = useProfiles();
   const [activeTab, setActiveTab] = useState<TabType>("balance");
 
@@ -41,6 +38,8 @@ const Dashboard = () => {
         return "Expenses";
       case "add":
         return "Add Expense";
+      case "profile":
+        return "Profile";
     }
   };
 
@@ -62,15 +61,6 @@ const Dashboard = () => {
               {roommate && ` & ${roommate.display_name}`}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={signOut}
-            title="Sign out"
-            className="h-10 w-10"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
         </div>
       </motion.header>
 
@@ -123,6 +113,18 @@ const Dashboard = () => {
               className="px-4 py-6"
             >
               <AddExpenseForm onSuccess={() => setActiveTab("balance")} />
+            </motion.div>
+          )}
+
+          {activeTab === "profile" && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ProfileView />
             </motion.div>
           )}
         </AnimatePresence>

@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useProfiles } from "@/hooks/useProfiles";
 import type { RecurringExpense, RecurringExpenseInsert } from "@/hooks/useRecurringExpenses";
 import type { ExpenseCategory, SplitType, RecurringExpenseType } from "@/integrations/firebase/types";
+import { calculateAmount } from "@/lib/amountCalculator";
 
 const categories: { value: ExpenseCategory; label: string }[] = [
   { value: "rent", label: "Rent" },
@@ -125,6 +126,20 @@ const EditRecurringDialog = ({
     }
   };
 
+  const handleAmountBlur = () => {
+    const calculated = calculateAmount(amount);
+    if (calculated !== amount) {
+      setAmount(calculated);
+    }
+  };
+
+  const handleCustomAmountBlur = () => {
+    const calculated = calculateAmount(customAmount);
+    if (calculated !== customAmount) {
+      setCustomAmount(calculated);
+    }
+  };
+
   const roommateName = roommate?.display_name || "Roommate";
 
   if (!item) return null;
@@ -151,11 +166,16 @@ const EditRecurringDialog = ({
             <Label htmlFor="edit-rec-amount">Default Amount</Label>
             <Input
               id="edit-rec-amount"
-              type="number"
-              step="0.01"
-              min="0.01"
+              type="text"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onBlur={handleAmountBlur}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleAmountBlur();
+                }
+              }}
               className="h-12 text-lg"
             />
           </div>
@@ -242,11 +262,16 @@ const EditRecurringDialog = ({
               <Label htmlFor="edit-rec-custom">Amount owed by other person</Label>
               <Input
                 id="edit-rec-custom"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
+                onBlur={handleCustomAmountBlur}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleCustomAmountBlur();
+                  }
+                }}
                 className="h-12"
               />
             </div>

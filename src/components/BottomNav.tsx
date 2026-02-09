@@ -1,9 +1,9 @@
-import { IndianRupee, Receipt, Plus, Repeat } from "lucide-react";
+import { IndianRupee, Receipt, Plus, Repeat, UserCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface BottomNavProps {
-  activeTab: "balance" | "recurring" | "expenses" | "add";
-  onTabChange: (tab: "balance" | "recurring" | "expenses" | "add") => void;
+  activeTab: "balance" | "recurring" | "expenses" | "add" | "profile";
+  onTabChange: (tab: "balance" | "recurring" | "expenses" | "add" | "profile") => void;
 }
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
@@ -12,6 +12,7 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
     { id: "recurring" as const, label: "Recurring", icon: Repeat },
     { id: "add" as const, label: "Add", icon: Plus, isMain: true },
     { id: "expenses" as const, label: "Expenses", icon: Receipt },
+    { id: "profile" as const, label: "Profile", icon: UserCircle },
   ];
 
   return (

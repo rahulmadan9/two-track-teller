@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useProfiles } from "@/hooks/useProfiles";
 import type { RecurringExpenseInsert } from "@/hooks/useRecurringExpenses";
 import type { ExpenseCategory, SplitType, RecurringExpenseType } from "@/integrations/firebase/types";
+import { calculateAmount } from "@/lib/amountCalculator";
 
 const categories: { value: ExpenseCategory; label: string }[] = [
   { value: "rent", label: "Rent" },
@@ -60,6 +61,20 @@ const AddRecurringDialog = ({
     setSplitType("fifty_fifty");
     setCustomAmount("");
     setPaidBy("me");
+  };
+
+  const handleAmountBlur = () => {
+    const calculated = calculateAmount(amount);
+    if (calculated !== amount) {
+      setAmount(calculated);
+    }
+  };
+
+  const handleCustomAmountBlur = () => {
+    const calculated = calculateAmount(customAmount);
+    if (calculated !== customAmount) {
+      setCustomAmount(calculated);
+    }
   };
 
   const handleSubmit = async () => {
@@ -130,12 +145,18 @@ const AddRecurringDialog = ({
             <Label htmlFor="rec-amount">Default Amount</Label>
             <Input
               id="rec-amount"
-              type="number"
-              step="0.01"
-              min="0.01"
+              type="text"
+              inputMode="decimal"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onBlur={handleAmountBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAmountBlur();
+                }
+              }}
               className="h-12 text-lg"
             />
           </div>
@@ -222,12 +243,18 @@ const AddRecurringDialog = ({
               <Label htmlFor="rec-custom">Amount owed by other person</Label>
               <Input
                 id="rec-custom"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
+                onBlur={handleCustomAmountBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCustomAmountBlur();
+                  }
+                }}
                 className="h-12"
               />
             </div>

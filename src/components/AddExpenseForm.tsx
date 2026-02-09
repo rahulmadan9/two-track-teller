@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { calculateAmount } from "@/lib/amountCalculator";
 type ExpenseCategory = "rent" | "utilities" | "groceries" | "household_supplies" | "shared_meals" | "purchases" | "other";
 type SplitType = "fifty_fifty" | "custom" | "one_owes_all";
 
@@ -99,6 +100,20 @@ const AddExpenseForm = ({ onSuccess }: AddExpenseFormProps) => {
       setDescription(suggestion.description);
       setAmount(suggestion.amount.toString());
       setSuggestion(null);
+    }
+  };
+
+  const handleAmountBlur = () => {
+    const calculated = calculateAmount(amount);
+    if (calculated !== amount) {
+      setAmount(calculated);
+    }
+  };
+
+  const handleCustomAmountBlur = () => {
+    const calculated = calculateAmount(customAmount);
+    if (calculated !== customAmount) {
+      setCustomAmount(calculated);
     }
   };
 
@@ -208,12 +223,18 @@ const AddExpenseForm = ({ onSuccess }: AddExpenseFormProps) => {
         </Label>
         <Input
           id="amount"
-          type="number"
-          step="0.01"
-          min="0.01"
+          type="text"
+          inputMode="decimal"
           placeholder="0.00"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          onBlur={handleAmountBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAmountBlur();
+            }
+          }}
           required
           className="text-xl h-14 font-medium"
         />
@@ -320,12 +341,18 @@ const AddExpenseForm = ({ onSuccess }: AddExpenseFormProps) => {
             <Label htmlFor="customAmount">Amount owed by other person</Label>
             <Input
               id="customAmount"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               placeholder="0.00"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
+              onBlur={handleCustomAmountBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleCustomAmountBlur();
+                }
+              }}
               required
               className="h-12"
             />
